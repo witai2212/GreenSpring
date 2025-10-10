@@ -1,0 +1,6 @@
+{
+  "pins": [
+    { "number": 17, "label": "LED", "direction": "out" },
+    { "number": 22, "label": "Button", "direction": "in" }
+  ]
+}
