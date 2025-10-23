@@ -1,120 +1,117 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - GreenSpring</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-  <link rel="icon" type="image/x-icon" href="/img/icons/favicon.ico">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GreenSpring Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-body-secondary">
-  <nav class="navbar navbar-expand-lg bg-body-tertiary shadow-sm">
-    <div class="container-fluid">
-      <a class="navbar-brand d-flex align-items-center" href="index.html">
-        <img src="./img/icons/ChatGPT Image 25. Juni 2025, 13_11_37.png" alt="Logo" width="40" height="40" class="me-2">
-        <strong>GreenSpring Admin</strong>
-      </a>
-    </div>
-  </nav>
-
+<body class="bg-light">
   <div class="container py-4">
-    <div class="card shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h4 class="mb-0">GPIO Configuration</h4>
-        <button id="addPin" class="btn btn-outline-primary btn-sm"><i class="bi bi-plus-circle"></i> Add Pin</button>
-      </div>
+    <h1 class="mb-3">GreenSpring · GPIO Config</h1>
+    <p class="text-muted">Add/edit pins, then click <strong>Save</strong>. Changes take effect immediately.</p>
+
+    <div class="card shadow-sm mb-3">
       <div class="card-body">
-        <form id="pinForm">
-          <div id="pinList"></div>
-          <button type="submit" class="btn btn-success mt-3"><i class="bi bi-save"></i> Save Configuration</button>
-        </form>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" id="pinsTable">
+            <thead>
+              <tr>
+                <th style="width:120px">Number (BCM)</th>
+                <th>Label</th>
+                <th style="width:140px">Direction</th>
+                <th style="width:80px"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button id="addRow" class="btn btn-outline-primary btn-sm">+ Add pin</button>
       </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button id="saveBtn" class="btn btn-primary">Save</button>
+      <button id="reloadBtn" class="btn btn-secondary">Reload</button>
+      <div id="status" class="ms-auto text-muted"></div>
     </div>
   </div>
 
   <script>
-    const configUrl = '/api/config';
+    const tbody = document.querySelector('#pinsTable tbody');
+    const statusEl = document.getElementById('status');
 
-    async function loadConfig() {
-      const res = await fetch(configUrl);
-      const data = await res.json();
-      const pinList = document.getElementById('pinList');
-      pinList.innerHTML = '';
-
-      data.pins.forEach((pin, index) => {
-        const div = document.createElement('div');
-        div.className = 'row g-3 align-items-center mb-3';
-        div.innerHTML = `
-          <div class="col-sm-2">
-            <input type="number" class="form-control" name="number" placeholder="GPIO" value="${pin.number}" required>
-          </div>
-          <div class="col-sm-4">
-            <input type="text" class="form-control" name="label" placeholder="Label" value="${pin.label}" required>
-          </div>
-          <div class="col-sm-3">
-            <select class="form-select" name="direction">
-              <option value="out" ${pin.direction === 'out' ? 'selected' : ''}>Output</option>
-              <option value="in" ${pin.direction === 'in' ? 'selected' : ''}>Input</option>
-            </select>
-          </div>
-          <div class="col-sm-2">
-            <button type="button" class="btn btn-danger btn-sm removeBtn"><i class="bi bi-trash"></i></button>
-          </div>
-        `;
-        pinList.appendChild(div);
-      });
+    function rowTemplate(pin = {number:'', label:'', direction:'out'}) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="number" class="form-control form-control-sm pin-number" value="${pin.number}"></td>
+        <td><input type="text" class="form-control form-control-sm pin-label" value="${pin.label || ''}"></td>
+        <td>
+          <select class="form-select form-select-sm pin-direction">
+            <option value="out"${pin.direction === 'out' ? ' selected' : ''}>out</option>
+            <option value="in"${pin.direction === 'in' ? ' selected' : ''}>in</option>
+          </select>
+        </td>
+        <td><button class="btn btn-sm btn-outline-danger remove-row">Remove</button></td>
+      `;
+      tr.querySelector('.remove-row').addEventListener('click', () => tr.remove());
+      return tr;
     }
 
-    document.getElementById('addPin').addEventListener('click', () => {
-      const pinList = document.getElementById('pinList');
-      const div = document.createElement('div');
-      div.className = 'row g-3 align-items-center mb-3';
-      div.innerHTML = `
-        <div class="col-sm-2">
-          <input type="number" class="form-control" name="number" placeholder="GPIO" required>
-        </div>
-        <div class="col-sm-4">
-          <input type="text" class="form-control" name="label" placeholder="Label" required>
-        </div>
-        <div class="col-sm-3">
-          <select class="form-select" name="direction">
-            <option value="out">Output</option>
-            <option value="in">Input</option>
-          </select>
-        </div>
-        <div class="col-sm-2">
-          <button type="button" class="btn btn-danger btn-sm removeBtn"><i class="bi bi-trash"></i></button>
-        </div>
-      `;
-      pinList.appendChild(div);
-    });
-
-    document.getElementById('pinForm').addEventListener('click', (e) => {
-      if (e.target.classList.contains('removeBtn') || e.target.closest('.removeBtn')) {
-        e.target.closest('.row').remove();
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const cfg = await res.json();
+        tbody.innerHTML = '';
+        (cfg.pins || []).forEach(p => tbody.appendChild(rowTemplate(p)));
+        status('Loaded config.');
+      } catch (e) {
+        status('Failed to load config.', true);
       }
-    });
+    }
 
-    document.getElementById('pinForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    function collectConfig() {
       const pins = [];
-      const rows = document.querySelectorAll('#pinList .row');
-      rows.forEach(row => {
-        const number = row.querySelector('input[name="number"]').value;
-        const label = row.querySelector('input[name="label"]').value;
-        const direction = row.querySelector('select[name="direction"]').value;
-        if (number && label && direction) {
-          pins.push({ number: parseInt(number), label, direction });
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const number = Number(tr.querySelector('.pin-number').value);
+        const label = tr.querySelector('.pin-label').value.trim();
+        const direction = tr.querySelector('.pin-direction').value.trim();
+        if (!Number.isNaN(number)) {
+          pins.push({ number, label, direction });
         }
       });
-      await fetch(configUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pins })
-      });
-      alert('Configuration saved! Reload the app for changes to take effect.');
+      return { pins };
+    }
+
+    async function saveConfig() {
+      try {
+        const cfg = collectConfig();
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cfg)
+        });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || 'Save failed');
+        }
+        await loadConfig();
+        status('Saved config.');
+      } catch (e) {
+        status('Failed to save config.', true);
+      }
+    }
+
+    function status(msg, error=false) {
+      statusEl.textContent = msg;
+      statusEl.className = error ? 'text-danger' : 'text-muted';
+    }
+
+    document.getElementById('addRow').addEventListener('click', () => {
+      tbody.appendChild(rowTemplate());
     });
+    document.getElementById('saveBtn').addEventListener('click', saveConfig);
+    document.getElementById('reloadBtn').addEventListener('click', loadConfig);
 
     loadConfig();
   </script>
